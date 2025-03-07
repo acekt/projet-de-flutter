@@ -1,0 +1,8 @@
+{
+    "Auth": true,
+    "Post": true,
+    "Comment": true,
+    "Like": true,
+    "Core": true,
+    "Media": true
+}
