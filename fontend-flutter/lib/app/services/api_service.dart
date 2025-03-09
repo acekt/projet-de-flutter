@@ -29,6 +29,31 @@ class ApiService {
     }
   }
 
+  Future<dynamic> put(String endpoint, Map<String, dynamic> data, {String? token}) async {
+    try {
+      final response = await http.put(
+        Uri.parse('$_baseUrl/$endpoint'),
+        headers: _buildHeaders(token),
+        body: jsonEncode(data),
+      );
+      return _handleResponse(response);
+    } catch (e) {
+      throw Exception('Erreur de connexion: $e');
+    }
+  }
+
+  Future<dynamic> delete(String endpoint, {String? token}) async {
+    try {
+      final response = await http.delete(
+        Uri.parse('$_baseUrl/$endpoint'),
+        headers: _buildHeaders(token),
+      );
+      return _handleResponse(response);
+    } catch (e) {
+      throw Exception('Erreur de connexion: $e');
+    }
+  }
+
   Map<String, String> _buildHeaders(String? token) {
     return {
       'Content-Type': 'application/json',

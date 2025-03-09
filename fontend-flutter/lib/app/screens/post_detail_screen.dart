@@ -1,52 +1,25 @@
 import 'package:flutter/material.dart';
+import 'package:get/get.dart';
+import 'package:frontend/app/controllers/post_controller.dart';
 import 'package:frontend/app/models/post.dart';
 import 'package:frontend/app/models/comment.dart';
-import 'package:frontend/app/services/api_service.dart';
 
-class PostDetailScreen extends StatefulWidget {
+class PostDetailScreen extends StatelessWidget {
   final int postId;
+  final String token;
 
-  const PostDetailScreen({super.key, required this.postId});
-
-  @override
-  State<PostDetailScreen> createState() => _PostDetailScreenState();
-}
-
-class _PostDetailScreenState extends State<PostDetailScreen> {
-  Post? post;
-  bool _isLoading = true;
-
-  @override
-  void initState() {
-    super.initState();
-    _fetchPostDetails();
-  }
-
-  Future<void> _fetchPostDetails() async {
-    try {
-      final apiService = ApiService();
-      final response = await apiService.get('post/${widget.postId}', token: 'YOUR_TOKEN_HERE');
-      setState(() {
-        post = Post.fromJson(response['post']);
-        _isLoading = false;
-      });
-    } catch (e) {
-      print('Erreur: $e');
-      setState(() {
-        _isLoading = false;
-      });
-    }
-  }
+  const PostDetailScreen({super.key, required this.postId, required this.token});
 
   @override
   Widget build(BuildContext context) {
+    final PostController postController = Get.find<PostController>();
+    final post = postController.posts.firstWhere((post) => post.id == postId);
+
     return Scaffold(
       appBar: AppBar(
         title: const Text('Détails du Post'),
       ),
-      body: _isLoading
-          ? const Center(child: CircularProgressIndicator())
-          : SingleChildScrollView(
+      body: SingleChildScrollView(
         padding: const EdgeInsets.all(16.0),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -54,16 +27,11 @@ class _PostDetailScreenState extends State<PostDetailScreen> {
             Row(
               children: [
                 CircleAvatar(
-                  backgroundImage: post!.user.image != null
-                      ? NetworkImage(post!.user.image!)
-                      : null,
-                  child: post!.user.image == null
-                      ? const Icon(Icons.person)
-                      : null,
+                  backgroundImage: NetworkImage(post.user.image ?? ''),
                 ),
                 const SizedBox(width: 8.0),
                 Text(
-                  post!.user.name,
+                  post.user.name,
                   style: const TextStyle(
                     fontSize: 16.0,
                     fontWeight: FontWeight.bold,
@@ -73,13 +41,13 @@ class _PostDetailScreenState extends State<PostDetailScreen> {
             ),
             const SizedBox(height: 16.0),
             Text(
-              post!.body,
+              post.body,
               style: const TextStyle(fontSize: 18.0),
             ),
-            if (post!.imageUrl != null)
+            if (post.imageUrl != null)
               Padding(
                 padding: const EdgeInsets.only(top: 8.0),
-                child: Image.network(post!.imageUrl!),
+                child: Image.network(post.imageUrl!),
               ),
             const SizedBox(height: 16.0),
             Row(
@@ -87,10 +55,13 @@ class _PostDetailScreenState extends State<PostDetailScreen> {
                 IconButton(
                   icon: const Icon(Icons.favorite),
                   onPressed: () {
-                    // Gérer le like
+                    postController.toggleLike(post.id, token);
                   },
                 ),
-                Text('${post!.likes.length}'),
+                Obx(() {
+                  final updatedPost = postController.posts.firstWhere((p) => p.id == postId);
+                  return Text('${updatedPost.likes} likes');
+                }),
               ],
             ),
             const SizedBox(height: 16.0),
@@ -98,20 +69,26 @@ class _PostDetailScreenState extends State<PostDetailScreen> {
               'Commentaires',
               style: TextStyle(fontSize: 16.0, fontWeight: FontWeight.bold),
             ),
-            ...post!.comments.map((comment) {
+            ...post.comments.map((comment) {
               return ListTile(
                 leading: CircleAvatar(
-                  backgroundImage: comment.user.image != null
-                      ? NetworkImage(comment.user.image!)
-                      : null,
-                  child: comment.user.image == null
-                      ? const Icon(Icons.person)
-                      : null,
+                  backgroundImage: NetworkImage(comment.user.image ?? ''),
                 ),
                 title: Text(comment.user.name),
                 subtitle: Text(comment.body),
               );
             }).toList(),
+            const SizedBox(height: 16.0),
+            TextField(
+              controller: TextEditingController(),
+              decoration: const InputDecoration(
+                labelText: 'Ajouter un commentaire',
+                border: OutlineInputBorder(),
+              ),
+              onSubmitted: (commentBody) {
+                postController.addComment(post.id, commentBody, token);
+              },
+            ),
           ],
         ),
       ),

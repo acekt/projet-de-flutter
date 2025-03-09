@@ -1,8 +1,5 @@
-// widgets/user_info.dart
-import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
-
-import '../../models/user.dart';
+import 'package:frontend/app/models/user.dart';
 
 class UserInfo extends StatelessWidget {
   final User user;

@@ -5,8 +5,7 @@ import 'package:frontend/app/screens/home_screen.dart';
 import 'package:frontend/app/screens/create_post_screen.dart';
 import 'package:frontend/app/screens/post_detail_screen.dart';
 import 'package:frontend/app/screens/user_profile_screen.dart';
-
-import 'app/models/user.dart';
+import 'package:frontend/app/models/user.dart';
 
 void main() {
   runApp(const MyApp());
@@ -33,19 +32,40 @@ class MyApp extends StatelessWidget {
           if (args == null || args['user'] == null || args['token'] == null) {
             return const LoginScreen();
           }
-          return HomeScreen(user: args['user'], token: args['token']);
+          return HomeScreen(
+            user: args['user'] as User,
+            token: args['token'] as String,
+          );
         },
         '/create-post': (context) {
-          final user = ModalRoute.of(context)!.settings.arguments as User;
-          return CreatePostScreen(user: user);
+          final args = ModalRoute.of(context)!.settings.arguments as Map<String, dynamic>?;
+          if (args == null || args['user'] == null || args['token'] == null) {
+            return const LoginScreen();
+          }
+          return CreatePostScreen(
+            user: args['user'] as User,
+            token: args['token'] as String,
+          );
         },
         '/post-detail': (context) {
-          final postId = ModalRoute.of(context)!.settings.arguments as int;
-          return PostDetailScreen(postId: postId);
+          final args = ModalRoute.of(context)!.settings.arguments as Map<String, dynamic>?;
+          if (args == null || args['postId'] == null || args['token'] == null) {
+            return const LoginScreen();
+          }
+          return PostDetailScreen(
+            postId: args['postId'] as int,
+            token: args['token'] as String,
+          );
         },
         '/user-profile': (context) {
-          final userId = ModalRoute.of(context)!.settings.arguments as int;
-          return UserProfileScreen(userId: userId);
+          final args = ModalRoute.of(context)!.settings.arguments as Map<String, dynamic>?;
+          if (args == null || args['userId'] == null || args['token'] == null) {
+            return const LoginScreen();
+          }
+          return UserProfileScreen(
+            userId: args['userId'] as int,
+            token: args['token'] as String,
+          );
         },
       },
     );

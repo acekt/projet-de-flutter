@@ -4,8 +4,14 @@ import 'package:frontend/app/models/post.dart';
 class PostCard extends StatelessWidget {
   final Post post;
   final VoidCallback onTap;
+  final VoidCallback onLikePressed; // Ajout d'un callback pour gérer les likes
 
-  const PostCard({super.key, required this.post, required this.onTap});
+  const PostCard({
+    super.key,
+    required this.post,
+    required this.onTap,
+    required this.onLikePressed, // Ajout du callback dans le constructeur
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -18,6 +24,7 @@ class PostCard extends StatelessWidget {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
+              // Section utilisateur (nom et avatar)
               Row(
                 children: [
                   CircleAvatar(
@@ -39,25 +46,42 @@ class PostCard extends StatelessWidget {
                 ],
               ),
               const SizedBox(height: 16.0),
+
+              // Corps du post
               Text(
                 post.body,
                 style: const TextStyle(fontSize: 16.0),
               ),
+
+              // Image du post (si elle existe)
               if (post.imageUrl != null)
                 Padding(
                   padding: const EdgeInsets.only(top: 8.0),
                   child: Image.network(post.imageUrl!),
                 ),
               const SizedBox(height: 16.0),
+
+              // Section likes et commentaires
               Row(
                 children: [
+                  // Bouton like
                   IconButton(
                     icon: const Icon(Icons.favorite),
+                    onPressed: onLikePressed, // Utilisation du callback pour gérer les likes
+                  ),
+                  Text('${post.likes} likes'), // Affichage du nombre de likes
+
+                  const SizedBox(width: 16.0),
+
+                  // Bouton commentaire
+                  IconButton(
+                    icon: const Icon(Icons.comment),
                     onPressed: () {
-                      // Gérer le like
+                      // Naviguer vers l'écran de détails du post pour voir les commentaires
+                      onTap();
                     },
                   ),
-                  Text('${post.likes.length}'),
+                  Text('${post.comments.length} commentaires'), // Affichage du nombre de commentaires
                 ],
               ),
             ],

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:frontend/app/services/auth_service.dart';
+import 'package:frontend/app/models/user.dart'; // Importez le modèle User
 
 class RegisterScreen extends StatefulWidget {
   const RegisterScreen({super.key});
@@ -32,7 +33,8 @@ class _RegisterScreenState extends State<RegisterScreen> {
         _passwordConfirmationController.text,
       );
 
-      final user = response['user'];
+      // Désérialisation de l'utilisateur
+      final user = User.fromJson(response['user']);
       final token = response['token'];
 
       if (token == null || token.isEmpty) {

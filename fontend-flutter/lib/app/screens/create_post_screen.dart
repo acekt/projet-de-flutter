@@ -1,13 +1,16 @@
+import 'dart:convert'; // Ajoutez cette importation pour utiliser base64Encode
 import 'package:flutter/material.dart';
-import 'package:frontend/app/services/api_service.dart';
 import 'package:image_picker/image_picker.dart';
 import 'dart:io';
+import 'package:http/http.dart' as http;
 import 'package:frontend/app/models/user.dart';
+import 'package:frontend/app/services/api_service.dart';
 
 class CreatePostScreen extends StatefulWidget {
   final User user;
+  final String token;
 
-  const CreatePostScreen({super.key, required this.user});
+  const CreatePostScreen({super.key, required this.user, required this.token});
 
   @override
   State<CreatePostScreen> createState() => _CreatePostScreenState();
@@ -15,15 +18,22 @@ class CreatePostScreen extends StatefulWidget {
 
 class _CreatePostScreenState extends State<CreatePostScreen> {
   final _formKey = GlobalKey<FormState>();
-  final _bodyController = TextEditingController();
+  final _postController = TextEditingController();
   File? _image;
+  String? _imageUrl; // Ajoutez cette variable pour stocker l'URL de l'image
+  final ImagePicker _picker = ImagePicker();
   bool _isLoading = false;
 
   Future<void> _pickImage() async {
-    final pickedFile = await ImagePicker().pickImage(source: ImageSource.gallery);
+    final pickedFile = await _picker.pickImage(source: ImageSource.gallery);
     if (pickedFile != null) {
+      final bytes = await pickedFile.readAsBytes();
+      final base64Image = base64Encode(bytes);
+      final imageUrl = 'data:image/png;base64,$base64Image';
+
       setState(() {
         _image = File(pickedFile.path);
+        _imageUrl = imageUrl; // Stockez l'URL de l'image
       });
     }
   }
@@ -40,34 +50,43 @@ class _CreatePostScreenState extends State<CreatePostScreen> {
       final response = await apiService.post(
         'post',
         {
-          'body': _bodyController.text,
-          'image': _image != null ? _image!.path : null,
+          'body': _postController.text,
+          if (_imageUrl != null) 'image': _imageUrl,
         },
-        token: 'YOUR_TOKEN_HERE',
+        token: widget.token,
       );
 
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(response['message'])),
-      );
-
-      Navigator.pop(context);
+      if (response['post'] != null) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Post créé avec succès !')),
+        );
+        Navigator.pop(context); // Retour à l'écran précédent
+      } else {
+        throw Exception('Échec de la création du post');
+      }
     } catch (e) {
-      print('Erreur: $e');
+      print("Erreur lors de la création du post: $e");
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Erreur lors de la création du post')),
+        SnackBar(content: Text('Erreur lors de la création du post: $e')),
       );
+    } finally {
+      setState(() {
+        _isLoading = false;
+      });
     }
-
-    setState(() {
-      _isLoading = false;
-    });
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Créer un Post'),
+        title: const Text('Créer un post'),
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.send),
+            onPressed: _createPost,
+          ),
+        ],
       ),
       body: Padding(
         padding: const EdgeInsets.all(16.0),
@@ -75,44 +94,27 @@ class _CreatePostScreenState extends State<CreatePostScreen> {
           key: _formKey,
           child: Column(
             children: [
-              Row(
-                children: [
-                  CircleAvatar(
-                    backgroundImage: widget.user.image != null
-                        ? NetworkImage(widget.user.image!)
-                        : null,
-                    child: widget.user.image == null
-                        ? const Icon(Icons.person)
-                        : null,
-                  ),
-                  const SizedBox(width: 8.0),
-                  Text(
-                    widget.user.name,
-                    style: const TextStyle(
-                      fontSize: 16.0,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 16.0),
               TextFormField(
-                controller: _bodyController,
-                decoration: const InputDecoration(labelText: 'Contenu du post'),
+                controller: _postController,
+                decoration: const InputDecoration(
+                  labelText: 'Quoi de neuf ?',
+                  border: OutlineInputBorder(),
+                ),
                 maxLines: 5,
                 validator: (value) {
                   if (value == null || value.isEmpty) {
-                    return 'Veuillez entrer un contenu';
+                    return 'Veuillez entrer du texte';
                   }
                   return null;
                 },
               ),
               const SizedBox(height: 16.0),
-              if (_image != null)
-                Image.file(_image!),
+              if (_imageUrl != null)
+                Image.network(_imageUrl!), // Utilisez Image.network pour afficher l'image
+              const SizedBox(height: 16.0),
               ElevatedButton(
                 onPressed: _pickImage,
-                child: const Text('Choisir une image'),
+                child: const Text('Ajouter une image'),
               ),
               const SizedBox(height: 16.0),
               _isLoading
