@@ -47,14 +47,17 @@ class _CreatePostScreenState extends State<CreatePostScreen> {
 
     try {
       final apiService = ApiService();
-      final response = await apiService.post(
-        'post',
-        {
-          'body': _postController.text,
-          if (_imageUrl != null) 'image': _imageUrl,
-        },
-        token: widget.token,
-      );
+      final Map<String, dynamic> body = {
+        'body': _postController.text,
+      };
+
+      if (_image != null) {
+        final bytes = await _image!.readAsBytes();
+        final base64Image = base64Encode(bytes);
+        body['image'] = 'data:image/png;base64,$base64Image';
+      }
+
+      final response = await apiService.post('post', body, token: widget.token);
 
       if (response['post'] != null) {
         ScaffoldMessenger.of(context).showSnackBar(

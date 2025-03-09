@@ -1,5 +1,4 @@
 import 'package:frontend/app/models/user.dart';
-
 import 'comment.dart';
 
 class Post {
@@ -19,6 +18,7 @@ class Post {
     required this.likes,
   });
 
+  // Méthode fromJson pour créer un Post à partir d'un JSON
   factory Post.fromJson(Map<String, dynamic> json) {
     return Post(
       id: json['id'],
@@ -29,6 +29,25 @@ class Post {
           ? List<Comment>.from(json['comments'].map((x) => Comment.fromJson(x)))
           : [],
       likes: json['likes_count'] ?? 0,
+    );
+  }
+
+  // Méthode copyWith pour créer une nouvelle instance de Post avec des propriétés modifiées
+  Post copyWith({
+    int? id,
+    String? body,
+    String? imageUrl,
+    User? user,
+    List<Comment>? comments,
+    int? likes,
+  }) {
+    return Post(
+      id: id ?? this.id,
+      body: body ?? this.body,
+      imageUrl: imageUrl ?? this.imageUrl,
+      user: user ?? this.user,
+      comments: comments ?? this.comments,
+      likes: likes ?? this.likes,
     );
   }
 }

@@ -1,286 +1,296 @@
 import 'package:flutter/material.dart';
+import 'package:get/get.dart';
 import 'package:frontend/app/models/user.dart';
 import 'package:frontend/app/models/post.dart';
-import 'package:frontend/app/services/api_service.dart';
 import 'package:frontend/app/screens/create_post_screen.dart';
+import 'package:frontend/app/screens/post_detail_screen.dart';
+import 'package:frontend/app/controllers/post_controller.dart';
 
-class HomeScreen extends StatefulWidget {
+class HomeScreen extends StatelessWidget {
   final User user;
   final String token;
 
   const HomeScreen({super.key, required this.user, required this.token});
 
   @override
-  State<HomeScreen> createState() => _HomeScreenState();
-}
-
-class _HomeScreenState extends State<HomeScreen> {
-  int _selectedIndex = 0;
-  List<Post> posts = [];
-  bool _isLoading = true;
-
-  @override
-  void initState() {
-    super.initState();
-    _fetchPosts();
-  }
-
-  Future<void> _fetchPosts() async {
-    try {
-      final apiService = ApiService();
-      final response = await apiService.get('post', token: widget.token);
-
-      // Affichez la réponse JSON pour vérifier sa structure
-      print('Réponse JSON: $response');
-
-      // Extrait la liste des posts de la réponse JSON
-      final Map<String, dynamic> jsonData = response;
-      final List<dynamic> postsData = jsonData['posts'];
-
-      setState(() {
-        posts = postsData.map((post) => Post.fromJson(post)).toList();
-        _isLoading = false;
-      });
-    } catch (e) {
-      setState(() {
-        _isLoading = false;
-      });
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Erreur lors du chargement des posts: $e')),
-      );
-    }
-  }
-
-  Future<void> _toggleLike(int postId) async {
-    try {
-      final apiService = ApiService();
-      final response = await apiService.post(
-        'posts/$postId/like',
-        {},
-        token: widget.token,
-      );
-
-      if (response['action'] == 'liked') {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Post liké')),
-        );
-      } else {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Like retiré')),
-        );
-      }
-
-      // Mettez à jour l'état du post après le like/unlike
-      setState(() {
-        final postIndex = posts.indexWhere((post) => post.id == postId);
-        if (postIndex != -1) {
-          posts[postIndex] = Post(
-            id: posts[postIndex].id,
-            body: posts[postIndex].body,
-            imageUrl: posts[postIndex].imageUrl,
-            user: posts[postIndex].user,
-            comments: posts[postIndex].comments,
-            likes: response['likes_count'],
-          );
-        }
-      });
-    } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Erreur lors du like: $e')),
-      );
-    }
-  }
-
-  void _onItemTapped(int index) {
-    setState(() {
-      _selectedIndex = index;
-    });
-  }
-
-  void _logout() {
-    Navigator.pushReplacementNamed(context, '/login');
-  }
-
-  @override
   Widget build(BuildContext context) {
+    final PostController postController = Get.put(PostController());
+    final RxInt currentIndex = 0.obs; // Pour suivre l'index de la navbar
+
+    // Liste des écrans correspondant aux onglets
+    final List<Widget> screens = [
+      HomeContent(user: user, token: token), // Écran Accueil
+      const NotificationsScreen(), // Écran Notifications
+      ProfileScreen(user: user), // Écran Profil
+    ];
+
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Accueil'),
+        title: const Text('Accueil', style: TextStyle(color: Colors.white)),
+        backgroundColor: Colors.blueAccent,
         actions: [
           IconButton(
-            icon: const Icon(Icons.logout),
-            onPressed: _logout,
+            icon: const Icon(Icons.refresh, color: Colors.white),
+            onPressed: () {
+              postController.fetchPosts(token); // Rafraîchir les posts
+            },
+          ),
+          IconButton(
+            icon: const Icon(Icons.logout, color: Colors.white),
+            onPressed: () {
+              Navigator.pushReplacementNamed(context, '/login');
+            },
           ),
         ],
       ),
-      body: _isLoading
-          ? const Center(child: CircularProgressIndicator())
-          : _pages[_selectedIndex],
-      bottomNavigationBar: BottomNavigationBar(
-        currentIndex: _selectedIndex,
-        onTap: _onItemTapped,
-        selectedItemColor: Colors.blueAccent,
-        unselectedItemColor: Colors.grey,
-        items: const [
-          BottomNavigationBarItem(
-            icon: Icon(Icons.home),
-            label: 'Accueil',
-          ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.notifications),
-            label: 'Notifications',
-          ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.person),
-            label: 'Profil',
-          ),
-        ],
+      drawer: Drawer(
+        child: ListView(
+          padding: EdgeInsets.zero,
+          children: [
+            DrawerHeader(
+              decoration: BoxDecoration(
+                color: Colors.blueAccent,
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  CircleAvatar(
+                    backgroundImage: NetworkImage(user.image ?? ''),
+                    radius: 30,
+                  ),
+                  const SizedBox(height: 10),
+                  Text(
+                    user.name,
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontSize: 18,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  Text(
+                    user.email,
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontSize: 14,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            ListTile(
+              leading: const Icon(Icons.person),
+              title: const Text('Profil'),
+              onTap: () {
+                currentIndex.value = 2; // Naviguer vers le profil
+                Navigator.pop(context); // Fermer le drawer
+              },
+            ),
+            ListTile(
+              leading: const Icon(Icons.settings),
+              title: const Text('Paramètres'),
+              onTap: () {
+                // Naviguer vers l'écran des paramètres
+              },
+            ),
+          ],
+        ),
       ),
-      floatingActionButton: _selectedIndex == 0
+      body: Obx(() {
+        return IndexedStack(
+          index: currentIndex.value,
+          children: screens,
+        );
+      }),
+      floatingActionButton: currentIndex.value == 0
           ? FloatingActionButton(
         onPressed: () {
           Navigator.push(
             context,
             MaterialPageRoute(
               builder: (context) => CreatePostScreen(
-                user: widget.user,
-                token: widget.token,
+                user: user,
+                token: token,
               ),
             ),
           );
         },
-        child: const Icon(Icons.add),
+        backgroundColor: Colors.blueAccent,
+        child: const Icon(Icons.add, color: Colors.white),
       )
           : null,
+      bottomNavigationBar: Obx(() {
+        return BottomNavigationBar(
+          currentIndex: currentIndex.value,
+          onTap: (index) {
+            currentIndex.value = index; // Changer l'index de l'onglet
+          },
+          selectedItemColor: Colors.blueAccent,
+          unselectedItemColor: Colors.grey,
+          items: const [
+            BottomNavigationBarItem(
+              icon: Icon(Icons.home),
+              label: 'Accueil',
+            ),
+            BottomNavigationBarItem(
+              icon: Icon(Icons.notifications),
+              label: 'Notifications',
+            ),
+            BottomNavigationBarItem(
+              icon: Icon(Icons.person),
+              label: 'Profil',
+            ),
+          ],
+        );
+      }),
     );
   }
-
-  final List<Widget> _pages = [
-    const HomeContent(),
-    const NotificationsPage(),
-    const ProfilePage(),
-  ];
 }
 
+// Écran Accueil
 class HomeContent extends StatelessWidget {
-  const HomeContent({super.key});
+  final User user;
+  final String token;
+
+  const HomeContent({super.key, required this.user, required this.token});
 
   @override
   Widget build(BuildContext context) {
-    final posts = (context.findAncestorStateOfType<_HomeScreenState>()?.posts ?? []);
+    final PostController postController = Get.find<PostController>();
 
-    return ListView.builder(
-      padding: const EdgeInsets.all(16.0),
-      itemCount: posts.length,
-      itemBuilder: (context, index) {
-        final post = posts[index];
-        return Card(
-          margin: const EdgeInsets.only(bottom: 16.0),
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(12.0),
-          ),
-          child: Padding(
-            padding: const EdgeInsets.all(16.0),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
+    return Obx(() {
+      if (postController.isLoading.value) {
+        return const Center(child: CircularProgressIndicator());
+      }
+      return RefreshIndicator(
+        onRefresh: () async {
+          await postController.fetchPosts(token);
+        },
+        child: ListView.builder(
+          padding: const EdgeInsets.all(16.0),
+          itemCount: postController.posts.length,
+          itemBuilder: (context, index) {
+            final post = postController.posts[index];
+            return Card(
+              margin: const EdgeInsets.only(bottom: 16.0),
+              elevation: 4.0,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(12.0),
+              ),
+              child: Padding(
+                padding: const EdgeInsets.all(16.0),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    CircleAvatar(
-                      backgroundImage: NetworkImage(post.user.image ?? ''),
+                    Row(
+                      children: [
+                        CircleAvatar(
+                          backgroundImage: NetworkImage(post.user.image ?? ''),
+                        ),
+                        const SizedBox(width: 8.0),
+                        Text(
+                          post.user.name,
+                          style: const TextStyle(
+                            fontWeight: FontWeight.bold,
+                            fontSize: 16.0,
+                          ),
+                        ),
+                      ],
                     ),
-                    const SizedBox(width: 8.0),
-                    Text(
-                      post.user.name,
-                      style: const TextStyle(
-                        fontWeight: FontWeight.bold,
-                        fontSize: 16.0,
+                    const SizedBox(height: 8.0),
+                    Text(post.body, style: const TextStyle(fontSize: 14.0)),
+                    if (post.imageUrl != null) ...[
+                      const SizedBox(height: 8.0),
+                      ClipRRect(
+                        borderRadius: BorderRadius.circular(8.0),
+                        child: Image.network(post.imageUrl!),
                       ),
+                    ],
+                    const SizedBox(height: 8.0),
+                    Row(
+                      children: [
+                        IconButton(
+                          icon: Obx(() {
+                            final isLiked = postController.isPostLiked(post.id);
+                            return Icon(
+                              isLiked ? Icons.favorite : Icons.favorite_border,
+                              color: isLiked ? Colors.red : Colors.grey,
+                            );
+                          }),
+                          onPressed: () {
+                            postController.toggleLike(post.id, token);
+                          },
+                        ),
+                        Obx(() {
+                          final postLikes = postController.getPostLikes(post.id);
+                          return Text('$postLikes likes', style: const TextStyle(fontSize: 14.0));
+                        }),
+                        const SizedBox(width: 16.0),
+                        IconButton(
+                          icon: const Icon(Icons.comment, color: Colors.grey),
+                          onPressed: () {
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (context) => PostDetailScreen(
+                                  postId: post.id,
+                                  token: token,
+                                ),
+                              ),
+                            );
+                          },
+                        ),
+                        Text('${post.comments.length} commentaires', style: const TextStyle(fontSize: 14.0)),
+                      ],
                     ),
                   ],
                 ),
-                const SizedBox(height: 8.0),
-                Text(post.body),
-                if (post.imageUrl != null) ...[
-                  const SizedBox(height: 8.0),
-                  ClipRRect(
-                    borderRadius: BorderRadius.circular(8.0),
-                    child: Image.network(post.imageUrl!),
-                  ),
-                ],
-                const SizedBox(height: 8.0),
-                Row(
-                  children: [
-                    IconButton(
-                      icon: const Icon(Icons.favorite_border),
-                      onPressed: () {
-                        // Logique pour liker un post
-                        final homeState = context.findAncestorStateOfType<_HomeScreenState>();
-                        if (homeState != null) {
-                          homeState._toggleLike(post.id);
-                        }
-                      },
-                    ),
-                    Text('${post.likes} likes'),
-                    const SizedBox(width: 16.0),
-                    IconButton(
-                      icon: const Icon(Icons.comment),
-                      onPressed: () {
-                        Navigator.pushNamed(
-                          context,
-                          '/post-detail',
-                          arguments: post.id,
-                        );
-                      },
-                    ),
-                    Text('${post.comments.length} commentaires'),
-                  ],
-                ),
-              ],
-            ),
-          ),
-        );
-      },
-    );
+              ),
+            );
+          },
+        ),
+      );
+    });
   }
 }
 
-class NotificationsPage extends StatelessWidget {
-  const NotificationsPage({super.key});
+// Écran Notifications
+class NotificationsScreen extends StatelessWidget {
+  const NotificationsScreen({super.key});
 
   @override
   Widget build(BuildContext context) {
     return const Center(
       child: Text(
         'Notifications',
-        style: TextStyle(fontSize: 20),
+        style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
       ),
     );
   }
 }
 
-class ProfilePage extends StatelessWidget {
-  const ProfilePage({super.key});
+// Écran Profil
+class ProfileScreen extends StatelessWidget {
+  final User user;
+
+  const ProfileScreen({super.key, required this.user});
 
   @override
   Widget build(BuildContext context) {
-    final user = (context.findAncestorStateOfType<_HomeScreenState>()?.widget.user);
-
     return Center(
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
           CircleAvatar(
             radius: 50,
-            backgroundImage: NetworkImage(user?.image ?? ''),
+            backgroundImage: NetworkImage(user.image ?? ''),
           ),
           const SizedBox(height: 16.0),
           Text(
-            user?.name ?? 'Utilisateur',
+            user.name,
             style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
           ),
           Text(
-            user?.email ?? '',
+            user.email,
             style: const TextStyle(fontSize: 16, color: Colors.grey),
           ),
         ],
