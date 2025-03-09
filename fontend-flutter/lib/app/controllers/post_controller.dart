@@ -22,6 +22,26 @@ class PostController extends GetxController {
     }
   }
 
+  Future<void> createPost(String body, String? imageUrl, String token) async {
+    try {
+      final response = await _apiService.post(
+        'posts',
+        {
+          'body': body,
+          if (imageUrl != null) 'image_url': imageUrl,
+        },
+        token: token,
+      );
+
+      // Ajouter le nouveau post à la liste des posts
+      final newPost = Post.fromJson(response['post']);
+      posts.insert(0, newPost); // Ajouter en haut de la liste
+    } catch (e) {
+      print('Erreur lors de la création du post: $e');
+    }
+  }
+
+
   Future<void> toggleLike(int postId, String token) async {
     try {
       final response = await _apiService.post(
